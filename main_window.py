@@ -16,6 +16,8 @@ from city_data import CityData
 from segment import SegmentType, MAX_COOR
 from cartographer import Cartographer
 
+from time import monotonic
+
 
 class MainWindow(QObject):
     def __init__(self, ui_file, parent=None):
@@ -68,15 +70,22 @@ class MainWindow(QObject):
 
     # load and draw a new city from file
     def load_city(self, clsmap_path=None):
+        total_loading_time = monotonic()
         if (clsmap_path is None):
             (clsmap_path, ext) = QFileDialog.getOpenFileName(\
                 filter="CSLMAP files (*.cslmap)")
 
+        load_start = monotonic()
         self.__load_city_elements(clsmap_path)
+        print(f"loading done in {monotonic() - load_start}s")
         self.backend_size = 4096
         self.cartographer = Cartographer(self.mapScene, self.mapView, self.city_data, self.status_bar)
+
+        cart_start = monotonic()
         self.cartographer.draw_map(self.backend_size)
+        print(f"map done in {monotonic() - cart_start}s")
         self.city_loaded = True
+        print(f"total finished in {monotonic() - total_loading_time}")
 
 
     # load backend city data elements
@@ -102,10 +111,11 @@ class MainWindow(QObject):
 
 
     def show_cursor_pos(self, cursor_pos, cursor_scene_pos):
-        pos_x = cursor_scene_pos.x() / self.backend_size * (2 * MAX_COOR) - MAX_COOR
-        pos_y = -cursor_scene_pos.y() / self.backend_size * (2 * MAX_COOR) - MAX_COOR
-        msg = f"X={pos_x:.4f},\tY={pos_y:.4f}"
-        self.status_bar.showMessage(msg)
+        if self.city_loaded: # Avoiding console spam by only showing coords when the map is loaded
+            pos_x = cursor_scene_pos.x() / self.backend_size * (2 * MAX_COOR) - MAX_COOR
+            pos_y = -cursor_scene_pos.y() / self.backend_size * (2 * MAX_COOR) - MAX_COOR
+            msg = f"X={pos_x:.4f},\tY={pos_y:.4f}"
+            self.status_bar.showMessage(msg)
 
 
 if __name__ == "__main__":
